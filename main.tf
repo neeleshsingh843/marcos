@@ -219,3 +219,48 @@ resource "aws_instance" "instance2" {
   user_data = file("demo2.sh")
 
 }
+
+#============= VPC PEERING ================
+
+resource "aws_vpc_peering_connection" "peer" {
+  provider = aws
+  depends_on = [ aws_vpc.vpc1]
+  vpc_id   = aws_vpc.vpc1.id
+  peer_region = "us-east-1"
+  peer_vpc_id = aws_vpc.vpc2.id
+  auto_accept = false
+  tags = {
+    Name = "vpc-peering-connection"
+  }
+  
+}
+resource "aws_vpc_peering_connection_accepter" "accepter" {
+  provider = aws.us
+  depends_on = [ aws_vpc_peering_connection.peer ]
+  vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
+  auto_accept = true
+  tags = {
+    Name = "vpc-peering-connection-accepter"
+  }
+}
+resource "aws_route" "name10" {
+  provider = aws
+  depends_on = [ aws_vpc_peering_connection.peer, aws_instance.instance1 ]
+  route_table_id         = aws_route_table.rt1.id
+  destination_cidr_block = aws_vpc.vpc2.cidr_block
+  vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
+}
+resource "aws_route" "name20" {
+  provider = aws.us
+  depends_on = [ aws_vpc_peering_connection.peer,aws_instance.instance2 ]
+  route_table_id         = aws_route_table.rt20.id
+  destination_cidr_block = aws_vpc.vpc1.cidr_block
+  vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
+}
+resource "aws_route" "name21" {
+  provider = aws.us
+  depends_on = [ aws_vpc_peering_connection.peer,aws_instance.instance2 ]
+  route_table_id         = aws_route_table.rt21.id
+  destination_cidr_block = aws_vpc.vpc1.cidr_block
+  vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
+}
